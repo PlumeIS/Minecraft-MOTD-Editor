@@ -3,4 +3,4 @@
 #
 ### Make a server motd to write in "motd=" in server.properties
 ### 生成一条motd并写入server.properties
-### 中文 及 各非ascii字符的支持!
+### 支持 中文 及 各非ascii字符 !
