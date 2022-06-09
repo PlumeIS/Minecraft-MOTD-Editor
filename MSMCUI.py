@@ -87,7 +87,7 @@ class MotdUI(Motd):
         self.unicodeEntry.insert(0,unicodeText)
         self.unicodeEntry["state"] = "readonly"
         self.unicodeEntry.update()
-        self.copyButton["command"] = lambda:[partial(pyperclip.copy,unicodeText),showinfo("结果","复制成功!")]
+        self.copyButton["command"] = lambda:[pyperclip.copy(unicodeText),showinfo("结果","复制成功!")]
         self.copyButton.update()
 
     def updateShow(self):
