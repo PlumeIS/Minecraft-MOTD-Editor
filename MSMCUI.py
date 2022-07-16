@@ -10,9 +10,10 @@ class MotdUI(Motd):
     def __init__(self):
         super().__init__()
         self.ui = tkinter.Tk()
+        self.ui.iconbitmap(resourcePath("icon.ico"))
 
     def init(self):
-        self.ui.title("我的世界服务器信息生成器by很绿の羽毛")
+        self.ui.title("我的世界服务器信息生成器by很绿の羽毛v1.0.5")
         self.ui.resizable(True, True)
         self.ui.geometry("485x350")
         self.ui.minsize(485,350)
@@ -22,7 +23,10 @@ class MotdUI(Motd):
         colorButtonX = 5
         colorButtonY = 30
 
-        colorText = tkinter.Label(text="当前颜色为:")
+        tkinter.Frame(self.ui,bg="#ded7b8",width=485,height=95).place(x=0,y=0)
+        tkinter.Frame(self.ui, bg="#ded7b8", width=485, height=60).place(x=0, y=240)
+
+        colorText = tkinter.Label(text="当前颜色为:",bg="#ded7b8")
         colorText.place(x=5, y=5)
         self.colorC = tkinter.Label(text="黑色", bg="#ded7b8")
         self.colorC.place(x=80, y=5)
@@ -38,7 +42,8 @@ class MotdUI(Motd):
                                     text=v["name"],
                                     fg=v["fontColor"],
                                     bg="#ded7b8",
-                                    width=6
+                                    width=6,
+                                    relief="flat",
                                     )
             button["command"] = partial(self.setColor, c)
             button.place(x=colorButtonX, y=colorButtonY)
@@ -53,7 +58,8 @@ class MotdUI(Motd):
             b = tkinter.Button(self.ui,
                                text=v["name"],
                                width=7,
-                               font=("", 10, v["fontStyle"])
+                               font=("", 10, v["fontStyle"]),
+                               relief="groove"
                                )
             b["command"] = partial(self.setStyle, s, b)
             b.place(x=styleButtonX, y=120)
@@ -65,18 +71,18 @@ class MotdUI(Motd):
         Separator(self.ui, orient=tkinter.HORIZONTAL).pack(fill=tkinter.X, pady=150)
         self.inputArea = tkinter.Entry(self.ui, width=35)
         self.inputArea.place(x=5, y=160)
-        tkinter.Button(self.ui, text="添加", command=lambda: [self.addPara(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10)).place(x=260, y=159)
-        tkinter.Button(self.ui, text="更改", command=lambda: [self.changeText(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10)).place(x=300, y=159)
-        tkinter.Button(self.ui, text="删除", command=lambda: [self.deletePara(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10), fg="#FF5555").place(x=340, y=159)
-        tkinter.Button(self.ui, text="颜色", command=lambda: [self.changeColor(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10)).place(x=405, y=159)
-        tkinter.Button(self.ui, text="样式", command=lambda: [self.changeStyle(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10)).place(x=445, y=159)
+        tkinter.Button(self.ui, text="添加", command=lambda: [self.addPara(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10),relief="groove").place(x=260, y=159)
+        tkinter.Button(self.ui, text="更改", command=lambda: [self.changeText(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10),relief="groove").place(x=300, y=159)
+        tkinter.Button(self.ui, text="删除", command=lambda: [self.deletePara(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10), fg="#FF5555",relief="groove").place(x=340, y=159)
+        tkinter.Button(self.ui, text="颜色", command=lambda: [self.changeColor(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10),relief="groove").place(x=405, y=159)
+        tkinter.Button(self.ui, text="样式", command=lambda: [self.changeStyle(), self.updatePara(), self.updateShow(), self.updateUnicode()],font=("", 10),relief="groove").place(x=445, y=159)
 
-        tkinter.Label(self.ui, text="预览:").place(x=5, y=240)
+        tkinter.Label(self.ui, text="预览:",bg="#ded7b8").place(x=5, y=240)
         tkinter.Label(self.ui, text="导出:").place(x=5, y=300)
 
         self.unicodeEntry = tkinter.Entry(self.ui, state="readonly", width=60)
         self.unicodeEntry.place(x=5, y=320)
-        self.copyButton = tkinter.Button(self.ui, text="复制", font=("", 10))
+        self.copyButton = tkinter.Button(self.ui, text="复制", font=("", 10), relief="groove")
         self.copyButton.place(x=435,y=319)
 
     def updateUnicode(self):
@@ -100,16 +106,26 @@ class MotdUI(Motd):
             if "\\n" in s["text"]:
                 placeX = 5
                 placeY += 20
-                showArea = tkinter.Label(self.ui, text=s["text"].replace("\\n", ""), fg=colors[s["color"]]["fontColor"],font=("", 10, " ".join([styles[i]["fontStyle"] for i in s["style"] if styles[i]["fontStyle"] != ""])))
+                showArea = tkinter.Label(self.ui, text=s["text"].replace("\\n", ""), bg="#ded7b8", fg=colors[s["color"]]["fontColor"],font=("", 10, " ".join([styles[i]["fontStyle"] for i in s["style"] if styles[i]["fontStyle"] != ""])))
             elif "\\t" in s["text"]:
-                showArea = tkinter.Label(self.ui, text=s["text"].replace("\\t", "    "),fg=colors[s["color"]]["fontColor"], font=("", 10, " ".join([styles[i]["fontStyle"] for i in s["style"] if styles[i]["fontStyle"] != ""])))
+                showArea = tkinter.Label(self.ui, text=s["text"].replace("\\t", "    "), bg="#ded7b8", fg=colors[s["color"]]["fontColor"], font=("", 10, " ".join([styles[i]["fontStyle"] for i in s["style"] if styles[i]["fontStyle"] != ""])))
             else:
-                showArea = tkinter.Label(self.ui, text=s["text"], fg=colors[s["color"]]["fontColor"], font=("", 10, " ".join([styles[i]["fontStyle"] for i in s["style"] if styles[i]["fontStyle"] != ""])))
+                showArea = tkinter.Label(self.ui, text=s["text"], bg="#ded7b8", fg=colors[s["color"]]["fontColor"], font=("", 10, " ".join([styles[i]["fontStyle"] for i in s["style"] if styles[i]["fontStyle"] != ""])))
+            if "k" in s["style"]:
+                showArea["text"] += "(随机字符)"
+                threading.Thread(target=MotdUI.updateRandomChar, args=(showArea,len(s["text"])),daemon=True).start()
             showArea.place(x=placeX, y=placeY)
             showArea.update()
             if not "\\n" in s["text"]:
                 placeX += (showArea.winfo_width() - 3)
             self.showList.append(showArea)
+
+    @staticmethod
+    def updateRandomChar(label,length):
+        while True:
+            label["text"] = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+            label.update()
+            time.sleep(0.2)
 
     def updateEdit(self, edit, b):
         self.edit = edit
