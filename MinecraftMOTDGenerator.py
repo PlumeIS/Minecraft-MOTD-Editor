@@ -344,7 +344,7 @@ class MOTDGeneratorUI(QWidget):
     def __init__(self):
         super().__init__()
         self.is_updating = False
-        self.setWindowTitle("MOTD Generator - 1.0")
+        self.setWindowTitle("MOTD Generator - 1.0.1")
         self.setGeometry(100, 100, 800, 600)
         self.setMouseTracking(True)
         self.color = r"\u00A7f"
