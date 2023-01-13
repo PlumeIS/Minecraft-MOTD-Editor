@@ -638,7 +638,7 @@ class MOTDGeneratorUI(QWidget):
         self.result_file_layout = QHBoxLayout()
         self.result_file_save_button = QPushButton("保存为文件(.motd)")
         self.result_file_save_button.clicked.connect(self.save_as_file)
-        self.result_file_load_button = QPushButton("从文件文件加载(.motd)")
+        self.result_file_load_button = QPushButton("从文件加载(.motd)")
         self.result_file_load_button.clicked.connect(self.load_from_file)
         self.result_file_layout.addWidget(self.result_file_save_button)
         self.result_file_layout.addWidget(self.result_file_load_button)
