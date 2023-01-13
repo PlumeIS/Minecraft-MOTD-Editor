@@ -812,7 +812,8 @@ class MOTDGeneratorUI(QWidget):
         if self.select_index == -1:
             self.motd.add_component(self.text_input.text(), self.color, style)
         else:
-            self.motd.insert_component(self.select_index - 1, self.text_input.text(), self.color, style)
+            self.motd.insert_component(self.select_index, self.text_input.text(), self.color, style)
+            self.select_index += 1
         self.list_listener.is_start = False
         self.update_select_list()
         self.view_widget.update_view(self.motd)
@@ -843,7 +844,8 @@ class MOTDGeneratorUI(QWidget):
         self.motd.pop(self.select_index)
         if self.select_index == self.select_list.count() - 2:
             self.on_select_clear()
-        self.text_input.setText(self.motd[self.select_index]["show"]["text"])
+        else:
+            self.text_input.setText(self.motd[self.select_index]["show"]["text"])
         self.list_listener.is_start = False
         self.update_select_list()
         self.view_widget.update_view(self.motd)
