@@ -1,4 +1,4 @@
-# Minecraft MOTD Generator  
+# Minecraft MOTD Editor  
 ## 中文项目
 ## UI预览  
 
