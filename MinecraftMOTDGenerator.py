@@ -1,6 +1,9 @@
+import zipfile
+
 import MOTD
 from ColorUtils import *
 
+import os
 import re
 import sys
 import time
@@ -93,7 +96,10 @@ class TextRandomer(QThread):
 class MOTDView(QFrame):
     def __init__(self, height, **kwargs):
         super().__init__(**kwargs)
+        with zipfile.ZipFile("MinecraftFont.zip") as font_file:
+            font_file.extractall(".")
         QtGui.QFontDatabase.addApplicationFont("minecraft.ttf")
+        os.remove("minecraft.ttf")
         self.setFixedHeight(height)
         self.setStyleSheet('QWidget{background-image: url("view.png")}')
         self.adding_count = 0
@@ -128,7 +134,7 @@ class MOTDView(QFrame):
         paragraph.setFont(self.font)
         paragraph.setFixedHeight(16)
         if MOTD.ChatStyle.reset.name in style:
-            paragraph.setStyleSheet("QLabel{color:#ffffff}")
+            paragraph.setStyleSheet("QLabel{color:#AAAAAA}")
         else:
             if MOTD.ChatStyle.underline.name in style:
                 paragraph.setText(f"<u>{text}</u>")
@@ -344,7 +350,8 @@ class MOTDGeneratorUI(QWidget):
     def __init__(self):
         super().__init__()
         self.is_updating = False
-        self.setWindowTitle("MOTD Generator - 1.0.1")
+        self.setWindowTitle("MOTD Generator - 1.0.2")
+        self.setWindowIcon(QIcon("./icon.ico"))
         self.setGeometry(100, 100, 800, 600)
         self.setMouseTracking(True)
         self.color = r"\u00A7f"
@@ -901,8 +908,8 @@ class MOTDGeneratorUI(QWidget):
                     save_file.write(json.dumps(self.motd, indent=True))
                 QMessageBox(self).information(self, "保存成功!", f"保存成功!")
 
-    def load_from_file(self):
-        file = QFileDialog.getOpenFileName(self, "加载文件", ".", "MOTD服务器简介文件 (*.motd)")
+    def load_from_file(self, file=None):
+        file = file or QFileDialog.getOpenFileName(self, "加载文件", ".", "MOTD服务器简介文件 (*.motd)")
         if file[0]:
             old_motd = self.motd
             try:
@@ -910,16 +917,21 @@ class MOTDGeneratorUI(QWidget):
                     self.motd = MOTD.MOTDGenerator()
                     for i in json.loads(load_file.read()):
                         self.motd.append(MOTD.UIComponent.build_by_raw(i))
+                self.list_listener.is_start = False
+                self.update_select_list()
+                self.view_widget.update_view(self.motd)
+                self.update_result()
+                self.list_listener.is_start = True
             except Exception as err:
                 QMessageBox(self).warning(self, "加载失败!", f"原因:{err}")
                 self.motd = old_motd
+                self.list_listener.is_start = False
+                self.update_select_list()
+                self.view_widget.update_view(self.motd)
+                self.update_result()
+                self.list_listener.is_start = True
             else:
                 QMessageBox(self).information(self, "加载成功!", f"MOTD文件已加载")
-            self.list_listener.is_start = False
-            self.update_select_list()
-            self.view_widget.update_view(self.motd)
-            self.update_result()
-            self.list_listener.is_start = True
 
     def closeEvent(self, event: PySide6.QtGui.QCloseEvent) -> None:
         self.view_widget.randomer.is_run = False
@@ -929,4 +941,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MOTDGeneratorUI()
     window.show()
+    if len(sys.argv) >= 2:
+        window.load_from_file((sys.argv[1], ""))
     sys.exit(app.exec())
