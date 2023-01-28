@@ -90,7 +90,7 @@ class ChatColor:
         if len(color.split(r"\u00A7")) == 2:
             match color.split(r"\u00A7")[1]:
                 case "0":
-                    return ChatColor.blue_hex
+                    return ChatColor.black
                 case "1":
                     return ChatColor.dark_blue_hex
                 case "2":
@@ -106,7 +106,7 @@ class ChatColor:
                 case "7":
                     return ChatColor.gray_hex
                 case "8":
-                    return ChatColor.dark_green_hex
+                    return ChatColor.dark_gray_hex
                 case "9":
                     return ChatColor.blue_hex
                 case "a":
@@ -151,7 +151,7 @@ class Component(dict):
         super().__init__()
         self["text"]: str = text
         self["color"]: str = color
-        self["style"]: str = r"\u00A7r"+style
+        self["style"]: str = style
 
     def set_text(self, text: str):
         self["text"] = text
@@ -163,7 +163,7 @@ class Component(dict):
         self["style"] = style
 
     def to_unicode(self):
-        return self["style"] + self["color"] + self["text"].encode("unicode-escape").decode().replace(r"\\", "\\")
+        return self["color"] + self["style"] + self["text"].encode("unicode-escape").decode().replace(r"\\", "\\")
 
 
 class UIComponent(Component):
