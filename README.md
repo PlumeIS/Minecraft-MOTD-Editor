@@ -2,7 +2,7 @@
 ## 中文项目
 ## UI预览  
 
-![UI预览](https://plxwx.ml/get/68747470733a2f2f706c7577752e6d6c2f696d672f696e74726f647563655f75692e706e67.png)
+![UI预览](https://pluwu.ml/img/introduce_ui.png)
 
 ## 项目介绍  
 在Minecraft服务器配置文件有一条`motd=`，作用是在客户端显示服务器简介  
