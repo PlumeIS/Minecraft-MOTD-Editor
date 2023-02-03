@@ -2,7 +2,7 @@
 ## 中文项目
 ## UI预览  
 
-![UI预览](https://pluwu.ml/img/introduce_ui.png)
+![网站炸掉了用GithubPage罢(悲](https://pluwu.ml/img/introduce_ui.png)
 
 ## 项目介绍  
 在Minecraft服务器配置文件有一条`motd=`，作用是在客户端显示服务器简介  
