@@ -1,9 +1,6 @@
-import zipfile
-
 import MOTD
 from ColorUtils import *
 
-import os
 import re
 import sys
 import time
@@ -78,13 +75,13 @@ class TextRandomer(QThread):
     def run(self) -> None:
         while self.is_run:
             self.counter += 1
-            time.sleep(self.interval)
             labels = self.labels.copy()
             for k, v in labels.items():
                 try:
                     k.setText("".join([random.choice(string.ascii_letters + string.digits + string.punctuation) for _ in range(v)]))
                 except RuntimeError:
-                    pass
+                    labels.pop(k)
+                time.sleep(self.interval/len(labels))
 
     def clear(self):
         self.labels = {}
@@ -96,10 +93,7 @@ class TextRandomer(QThread):
 class MOTDView(QFrame):
     def __init__(self, height, **kwargs):
         super().__init__(**kwargs)
-        with zipfile.ZipFile("MinecraftFont.zip") as font_file:
-            font_file.extractall(".")
         QtGui.QFontDatabase.addApplicationFont("minecraft.ttf")
-        os.remove("minecraft.ttf")
         self.setFixedHeight(height)
         self.setStyleSheet('QWidget{background-image: url("view.png")}')
         self.adding_count = 0
@@ -230,6 +224,7 @@ class ColorPalette(QGraphicsView):
         self.setFixedSize(*size)
         self.update_palette(0, 0)
         self.is_press = False
+        self.waiting = 0
 
         self.h = 0
         self.v = 1
@@ -350,7 +345,7 @@ class MOTDGeneratorUI(QWidget):
     def __init__(self):
         super().__init__()
         self.is_updating = False
-        self.setWindowTitle("MOTD Generator - 1.0.2")
+        self.setWindowTitle("MOTD Editor - 1.0.3")
         self.setWindowIcon(QIcon("./icon.ico"))
         self.setGeometry(100, 100, 800, 600)
         self.setMouseTracking(True)
