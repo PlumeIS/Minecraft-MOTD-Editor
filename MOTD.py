@@ -67,7 +67,7 @@ class ChatColor:
     dark_green_hex = "#00AA00"
     dark_aqua_hex = "#00AAAA"
     dark_red_hex = "#AA0000"
-    dark_purple_hex = "AA00AA"
+    dark_purple_hex = "#AA00AA"
     gold_hex = "#FFAA00"
     gray_hex = "#AAAAAA"
     dark_gray_hex = "#555555"
