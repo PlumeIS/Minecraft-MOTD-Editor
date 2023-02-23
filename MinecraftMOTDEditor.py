@@ -1,25 +1,26 @@
-import MOTD
-from ColorUtils import *
-
+import json
+import random
 import re
+import string
 import sys
 import time
-import json
-import string
-import random
+from threading import Thread
+
 import PySide6
+import pyperclip
 from PySide6 import QtGui
 from PySide6.QtCore import QRectF, Qt, QThread
-from PySide6.QtGui import QLinearGradient, QColor, QGradient, QBrush, QFont, QIcon
+from PySide6.QtGui import QLinearGradient, QColor, QGradient, QBrush, QFont, QIcon, QAction
 from PySide6.QtWidgets import (
     QApplication, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,
     QGroupBox, QPushButton, QGraphicsScene, QGraphicsEllipseItem,
     QGraphicsView, QLabel, QGraphicsRectItem, QLineEdit, QSpacerItem,
     QSizePolicy, QCheckBox, QFrame, QListWidget, QListWidgetItem,
-    QMessageBox, QFileDialog
+    QMessageBox, QFileDialog, QMainWindow, QMenuBar
 )
-import pyperclip
-from threading import Thread
+
+import MOTD
+from ColorUtils import *
 
 
 def style_parser(prefix, styles):
@@ -81,7 +82,7 @@ class TextRandomer(QThread):
                     k.setText("".join([random.choice(string.ascii_letters + string.digits + string.punctuation) for _ in range(v)]))
                 except RuntimeError:
                     labels.pop(k)
-                time.sleep(self.interval/len(labels))
+                time.sleep(self.interval / len(labels))
 
     def clear(self):
         self.labels = {}
@@ -341,14 +342,60 @@ class ColorStrip(QGraphicsView):
             self.update_strip(event.position().x(), event.position().y())
 
 
-class MOTDGeneratorUI(QWidget):
+class MOTDGeneratorWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("MOTD Editor - 1.0.5")
+        self.setGeometry(100, 100, 800, 600)
+        self.setMouseTracking(True)
+        self.generator = MOTDGeneratorWidget()
+        self.setCentralWidget(self.generator)
+
+        self.file = None
+
+        self.menu_bar = QMenuBar()
+
+        self.file_menu = self.menu_bar.addMenu("文件")
+
+        self.load_action = QAction("打开(.motd)", self)
+        self.load_action.triggered.connect(self.load_from_file)
+        self.file_menu.addAction(self.load_action)
+
+        self.file_menu.addSeparator()
+        self.save_action = QAction("保存(.motd)", self)
+        self.save_action.triggered.connect(self.save_with_file)
+        self.save_action.setEnabled(False)
+        self.file_menu.addAction(self.save_action)
+        self.save_as_action = QAction("另存为(.motd)", self)
+        self.save_as_action.triggered.connect(self.save_as_file)
+        self.save_as_action.setEnabled(False)
+        self.file_menu.addAction(self.save_as_action)
+
+        self.setMenuBar(self.menu_bar)
+
+    def load_from_file(self):
+        file = QFileDialog.getOpenFileName(self, "加载文件", ".", "MOTD服务器简介文件 (*.motd)")
+        self.file = file[0]
+        self.generator.load_from_file(file)
+        self.save_action.setEnabled(True)
+        self.save_as_action.setEnabled(True)
+
+    def save_with_file(self):
+        with open(self.file, "w", encoding="utf-8") as file:
+            file.write(self.generator.to_file_data())
+        QMessageBox(self.generator).information(self.generator, "保存成功!", "保存成功!")
+
+    def save_as_file(self):
+        self.generator.save_as_file()
+
+    def closeEvent(self, event: PySide6.QtGui.QCloseEvent) -> None:
+        self.generator.view_widget.randomer.is_run = False
+
+
+class MOTDGeneratorWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.is_updating = False
-        self.setWindowTitle("MOTD Editor - 1.0.3")
-        self.setWindowIcon(QIcon("./icon.ico"))
-        self.setGeometry(100, 100, 800, 600)
-        self.setMouseTracking(True)
         self.color = r"\u00A7f"
         self.custom_color_hex = "#ff0000"
         self.color_r = 255
@@ -855,14 +902,7 @@ class MOTDGeneratorUI(QWidget):
         self.list_listener.is_start = True
 
     def change_text(self):
-        if self.motd[self.select_index]["show"]["component_type"] == MOTD.ComponentType.normal:
-            self.motd.set_component_text(self.select_index, self.text_input.text())
-        else:
-            start_color = self.motd[self.select_index]["show"]["colors"][0]
-            end_color = self.motd[self.select_index]["show"]["colors"][len(self.text_input.text()) - 1]
-            style = self.motd[self.select_index]["style"]
-            self.motd.pop(self.select_index)
-            self.motd.add_gradient_color_component(self.text_input.text(), start_color, end_color, style)
+        self.motd.set_component_text(self.select_index, self.text_input.text())
         self.list_listener.is_start = False
         self.update_select_list()
         self.view_widget.update_view(self.motd)
@@ -895,6 +935,31 @@ class MOTDGeneratorUI(QWidget):
         self.result_output_line.setEnabled(True)
         self.result_output_line.setText(self.motd.to_unicode())
 
+    def to_file_data(self):
+        return json.dumps(self.motd, indent=True)
+
+    def load(self, file_data):
+        old_motd = self.motd
+        try:
+            self.motd = MOTD.MOTDGenerator()
+            for i in file_data:
+                self.motd.append(MOTD.UIComponent.build_by_raw(i))
+            self.list_listener.is_start = False
+            self.update_select_list()
+            self.view_widget.update_view(self.motd)
+            self.update_result()
+            self.list_listener.is_start = True
+        except Exception as err:
+            QMessageBox(self).warning(self, "加载失败!", f"原因:{err}")
+            self.motd = old_motd
+            self.list_listener.is_start = False
+            self.update_select_list()
+            self.view_widget.update_view(self.motd)
+            self.update_result()
+            self.list_listener.is_start = True
+        else:
+            QMessageBox(self).information(self, "加载成功!", f"MOTD文件已加载")
+
     def save_as_file(self):
         if not self.result_output_line.text() == "":
             file = QFileDialog.getSaveFileName(self, "保存文件", ".", "MOTD服务器简介文件 (*.motd)")
@@ -906,36 +971,14 @@ class MOTDGeneratorUI(QWidget):
     def load_from_file(self, file=None):
         file = file or QFileDialog.getOpenFileName(self, "加载文件", ".", "MOTD服务器简介文件 (*.motd)")
         if file[0]:
-            old_motd = self.motd
-            try:
-                with open(file[0], "r") as load_file:
-                    self.motd = MOTD.MOTDGenerator()
-                    for i in json.loads(load_file.read()):
-                        self.motd.append(MOTD.UIComponent.build_by_raw(i))
-                self.list_listener.is_start = False
-                self.update_select_list()
-                self.view_widget.update_view(self.motd)
-                self.update_result()
-                self.list_listener.is_start = True
-            except Exception as err:
-                QMessageBox(self).warning(self, "加载失败!", f"原因:{err}")
-                self.motd = old_motd
-                self.list_listener.is_start = False
-                self.update_select_list()
-                self.view_widget.update_view(self.motd)
-                self.update_result()
-                self.list_listener.is_start = True
-            else:
-                QMessageBox(self).information(self, "加载成功!", f"MOTD文件已加载")
-
-    def closeEvent(self, event: PySide6.QtGui.QCloseEvent) -> None:
-        self.view_widget.randomer.is_run = False
+            with open(file[0], "r") as load_file:
+                self.load(json.loads(load_file.read()))
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MOTDGeneratorUI()
+    window = MOTDGeneratorWindow()
     window.show()
     if len(sys.argv) >= 2:
-        window.load_from_file((sys.argv[1], ""))
+        window.generator.load_from_file((sys.argv[1], ""))
     sys.exit(app.exec())
