@@ -345,7 +345,7 @@ class ColorStrip(QGraphicsView):
 class MOTDGeneratorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("MOTD Editor - 1.0.5")
+        self.setWindowTitle("MOTD Editor - 1.1.0")
         self.setGeometry(100, 100, 800, 600)
         self.setMouseTracking(True)
         self.generator = MOTDGeneratorWidget()
