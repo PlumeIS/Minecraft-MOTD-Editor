@@ -126,12 +126,16 @@ class ChatColor:
 
 
 class Show(dict):
-    def __init__(self, component_type: str, colors: list, styles: list, text: str = None):
+    def __init__(self, component_type: str, colors: list, styles: list, text: str = None, start_color: str = None, end_color: str = None, style: str = None):
         super().__init__()
         self["component_type"] = component_type
         self["text"] = text
         self["colors"] = colors
         self["styles"] = styles
+
+        self["start_color"] = start_color
+        self["end_color"] = end_color
+        self["style"] = style
 
     def set_component_type(self, component_type: str):
         self["component_type"] = component_type
@@ -228,31 +232,47 @@ class MOTDGenerator(MOTD):
         self.insert(index, UIComponent(Show(ComponentType.normal, [ChatColor.hex(color)], ChatStyle.des(style), text), text, color, style))
 
     def set_component_text(self, index: int, text: str):
-        self[index].set_text(text)
-        self[index]["show"].set_text(text)
+        if self[index]["show"]["component_type"] == ComponentType.normal:
+            self[index].set_text(text)
+            self[index]["show"].set_text(text)
+        else:
+            start_color = self[index]["show"]["start_color"]
+            end_color = self[index]["show"]["end_color"]
+            show, text = self.get_gradient_color_result(text, start_color, end_color, self[index]["show"]["style"])
+            self[index]["show"] = show
+            self[index].set_text(text)
 
     def set_component_color(self, index: int, color: str, end_color: str | None = None):
         if not end_color:
             self[index].set_color(color)
             self[index]["show"].set_colors([ChatColor.hex(color)])
         else:
-            text = self[index]["show"]["text"]
-            style = self[index]["style"]
-            self.del_component(index)
-            self.insert_gradient_color_component(index, text, color, end_color, style)
+            style = self[index]["show"]["style"]
+            show, text = self.get_gradient_color_result(self[index]["show"]["text"], color, end_color, style)
+            self[index]["show"] = show
+            self[index].set_text(text)
 
     def set_component_style(self, index: int, style: str):
-        self[index].set_style(style)
-        self[index]["show"].set_styles(ChatStyle.des(style))
+        if self[index]["show"]["component_type"] == ComponentType.normal:
+            self[index].set_style(style)
+            self[index]["show"].set_styles(ChatStyle.des(style))
+        else:
+            start_color = self[index]["show"]["start_color"]
+            end_color = self[index]["show"]["end_color"]
+            show, text = self.get_gradient_color_result(self[index]["show"]["text"], start_color, end_color, style)
+            self[index]["show"] = show
+            self[index].set_text(text)
 
     def add_gradient_color_component(self, text: str, start_color: str, end_color: str, style=""):
-        self.append(self.get_gradient_color_component(text, start_color, end_color, style))
+        show, text = self.get_gradient_color_result(text, start_color, end_color, style)
+        self.append(UIComponent(show, text, color=""))
 
     def insert_gradient_color_component(self, index: int, text: str, start_color: str, end_color: str, style=""):
-        self.insert(index, self.get_gradient_color_component(text, start_color, end_color, style))
+        show, text = self.get_gradient_color_result(text, start_color, end_color, style)
+        self.insert(index, UIComponent(show, text, color=""))
 
     @staticmethod
-    def get_gradient_color_component(text: str, start_color: str, end_color: str, style=""):
+    def get_gradient_color_result(text: str, start_color: str, end_color: str, style=""):
         r1, g1, b1 = tuple(int(start_color.replace("#", "")[i:i + 2], 16) for i in (0, 2, 4))
         r2, g2, b2 = tuple(int(end_color.replace("#", "")[i:i + 2], 16) for i in (0, 2, 4))
 
@@ -275,11 +295,10 @@ class MOTDGenerator(MOTD):
             colors.append(f"#000000")
         colors.pop(-1)
 
-        return UIComponent(Show(ComponentType.gradient_color, colors, ChatStyle.des(style), text),
-                           " ".join([
-                               "".join([ChatColor.of(f"#{r:02x}{g:02x}{b:02x}") + chunk[index]
-                                        for index, (r, g, b) in enumerate(colors)])
-                               for chunk, colors in zip(text.split(" "), gradient)]), style=style)
+        return (Show(ComponentType.gradient_color, colors, ChatStyle.des(style), text, start_color, end_color, style),
+                " ".join(["".join([ChatColor.of(f"#{r:02x}{g:02x}{b:02x}") + style + chunk[index]
+                                   for index, (r, g, b) in enumerate(colors)])
+                          for chunk, colors in zip(text.split(" "), gradient)]))
 
     def add_by_raw(self, raw):
         self.append(raw)
