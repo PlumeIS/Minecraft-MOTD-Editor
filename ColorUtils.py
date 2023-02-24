@@ -1,6 +1,14 @@
 import math
 
 
+def normalize_float(f):
+    """By pygal.colors"""
+    """Round float errors"""
+    if abs(f - round(f)) < .0000000000001:
+        return round(f)
+    return f
+
+
 def hsv2rgb(h, s, v):
     h = float(h)
     s = float(s)
@@ -56,3 +64,60 @@ def rgb2hex(rgb):
 def hex2rgb(hex_color):
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def rgb_to_hsl(r, g, b):
+    """Convert a color in r, g, b to a color in h, s, l"""
+    r = r or 0
+    g = g or 0
+    b = b or 0
+    r /= 255
+    g /= 255
+    b /= 255
+    max_ = max((r, g, b))
+    min_ = min((r, g, b))
+    d = max_ - min_
+
+    if not d:
+        h = 0
+    elif r is max_:
+        h = 60 * (g - b) / d
+    elif g is max_:
+        h = 60 * (b - r) / d + 120
+    else:
+        h = 60 * (r - g) / d + 240
+
+    l = .5 * (max_ + min_)
+    if not d:
+        s = 0
+    elif l < 0.5:
+        s = .5 * d / l
+    else:
+        s = .5 * d / (1 - l)
+    return tuple(map(normalize_float, (h % 360, s * 100, l * 100)))
+
+
+def hsl_to_rgb(h, s, l):
+    """Convert a color in h, s, l to a color in r, g, b"""
+    h /= 360
+    s /= 100
+    l /= 100
+
+    m2 = l * (s + 1) if l <= .5 else l + s - l * s
+    m1 = 2 * l - m2
+
+    def h_to_rgb(h):
+        h = h % 1
+        if 6 * h < 1:
+            return m1 + 6 * h * (m2 - m1)
+        if 2 * h < 1:
+            return m2
+        if 3 * h < 2:
+            return m1 + 6 * (2 / 3 - h) * (m2 - m1)
+        return m1
+
+    r, g, b = map(
+        lambda x: round(x * 255), map(h_to_rgb, (h + 1 / 3, h, h - 1 / 3))
+    )
+
+    return r, g, b
