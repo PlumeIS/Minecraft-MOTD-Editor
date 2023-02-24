@@ -1,9 +1,9 @@
-import json
-import random
 import re
-import string
 import sys
 import time
+import json
+import random
+import string
 from threading import Thread
 
 import PySide6
@@ -70,12 +70,10 @@ class TextRandomer(QThread):
         super().__init__()
         self.labels = {}
         self.interval = interval
-        self.counter = 0
         self.is_run = True
 
     def run(self) -> None:
         while self.is_run:
-            self.counter += 1
             labels = self.labels.copy()
             for k, v in labels.items():
                 try:
@@ -217,25 +215,20 @@ class ColorView(QGraphicsView):
         self.color_scene.clearSelection()
 
 
-class ColorPalette(QGraphicsView):
-    def __init__(self, parent, size, strip):
+class HSLColorPaletteStrip(QGraphicsView):
+    def __init__(self, parent, palette, size):
         super().__init__()
-        self.parent = parent
-        self.strip = strip
-        self.setFixedSize(*size)
-        self.update_palette(0, 0)
         self.is_press = False
-        self.waiting = 0
-
+        self.parent = parent
+        self.palette = palette
+        self.setFixedSize(*size)
+        self.update_view(0)
         self.h = 0
-        self.v = 1
 
-    def only_update_pos(self, x, y):
-        rect = QRectF(0, 0, self.width() - 2,
-                      self.height() - 2)
-        scene = QGraphicsScene(rect)
+    def update_view(self, pos):
+        scene = QGraphicsScene(QRectF(0, 0, self.width() - 2, self.height() - 2))
         self.setScene(scene)
-        color_gradient = QLinearGradient(0, 0, self.width(), 0)
+        color_gradient = QLinearGradient(0, 0, 0, self.height())
         color_gradient.setSpread(QGradient.RepeatSpread)
         color_gradient.setColorAt(0, QColor(255, 0, 0, 255))
         color_gradient.setColorAt(0.166, QColor(255, 255, 0, 255))
@@ -244,152 +237,99 @@ class ColorPalette(QGraphicsView):
         color_gradient.setColorAt(0.666, QColor(0, 0, 255, 255))
         color_gradient.setColorAt(0.833, QColor(255, 0, 255, 255))
         color_gradient.setColorAt(1, QColor(255, 0, 0, 255))
+        scene.setBackgroundBrush(color_gradient)
+
+        item = QGraphicsRectItem(0, -2, self.width(), 4)
+        item.setBrush(QColor.fromRgb(63, 38, 44, 64))
+        item.setPos(0, pos)
+        scene.addItem(item)
+
+    def update_palette(self, y):
+        y = y if y >= 0 else 0
+        y = y if y <= self.height() - 2 else self.height() - 2
+
+        self.update_view(y)
+        self.h = 360 * (y / (self.height() - 2)) if y / (self.height() - 2) < 1 else 0
+        self.palette.update_color(self.h)
+        self.palette.update_view(self.palette.x, self.palette.y)
+        self.parent.custom_color()
+
+    def mousePressEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
+        self.is_press = True
+        self.update_palette(event.position().y())
+        self.parent.stop_text_randomer()
+
+    def mouseReleaseEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
+        self.is_press = False
+        self.parent.start_text_randomer()
+
+    def mouseMoveEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
+        if self.is_press:
+            self.update_palette(event.position().y())
+
+
+class HSLColorPalette(QGraphicsView):
+    def __init__(self, parent, size):
+        super().__init__()
+        self.is_press = False
+        self.parent = parent
+        self.setFixedSize(*size)
+        self.color = (255, 0, 0)
+        self.x = self.width()
+        self.y = 0
+        self.update_view(self.width(), 0)
+
+        self.s = 0
+        self.l = 100
+
+    def update_color(self, h):
+        self.color = hsl_to_rgb(h, 100, 50)
+
+    def update_view(self, x, y):
+        self.x = x
+        self.y = y
+
+        scene = QGraphicsScene(QRectF(0, 0, self.width() - 2, self.height() - 2))
+        self.setScene(scene)
+        color_gradient = QLinearGradient(0, 0, self.width(), 0)
+        color_gradient.setSpread(QGradient.RepeatSpread)
+        color_gradient.setColorAt(0, QColor(*self.color, 0))
+        color_gradient.setColorAt(1, QColor(*self.color, 255))
         black_gradient = QLinearGradient(0, 0, 0, self.height())
         black_gradient.setSpread(QGradient.RepeatSpread)
         black_gradient.setColorAt(0, QColor(0, 0, 0, 0))
-        black_gradient.setColorAt(1, QColor(0, 0, 0, 250))
-        item = QGraphicsEllipseItem(-2, -2, 4, 4)
-        item.setPos(x, y)
-        item.setBrush(Qt.black)
+        black_gradient.setColorAt(1, QColor(0, 0, 0, 255))
         scene.setBackgroundBrush(color_gradient)
         scene.setForegroundBrush(black_gradient)
+
+        item = QGraphicsEllipseItem(-3, -3, 6, 6)
+        item.setPos(x, y)
+        item.setBrush(QColor.fromRgb(63, 38, 44, 64))
         scene.addItem(item)
-        scene.clearSelection()
 
-    def update_palette(self, select_x, select_y):
-        select_x = select_x if select_x >= 0 else 0
-        select_x = select_x if select_x < self.width() else self.width()
-        select_y = select_y if select_y >= 0 else 0
-        select_y = select_y if select_y < self.height() else self.height()
+    def update_palette(self, x, y):
+        x = x if x >= 0 else 0
+        x = x if x <= self.width() else self.width()
+        y = y if y >= 0 else 0
+        y = y if y <= self.height() else self.height()
 
-        self.parent.is_updating = True
-        self.only_update_pos(select_x, select_y)
-
-        self.h = select_x / self.size().width() * 360
-        self.v = 1 - (select_y / self.size().height())
-
-        self.strip.update_color(hsv2rgb(self.h, 1, self.v), hsv2rgb(self.h, 0, self.v))
+        self.update_view(x, y)
+        self.s = (x / self.width()) * 100
+        self.l = ((1 - 0.5 * x / self.width()) * (1 - (y / self.height()))) * 100
         self.parent.custom_color()
-        self.parent.is_updating = False
 
     def mousePressEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
         self.is_press = True
         self.update_palette(event.position().x(), event.position().y())
+        self.parent.stop_text_randomer()
 
     def mouseReleaseEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
         self.is_press = False
+        self.parent.start_text_randomer()
 
     def mouseMoveEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
         if self.is_press:
             self.update_palette(event.position().x(), event.position().y())
-
-
-class ColorStrip(QGraphicsView):
-    def __init__(self, parent, size):
-        super().__init__()
-        self.parent = parent
-        self.setFixedSize(*size)
-        self.is_press = False
-        self.color_top = QColor(255, 0, 0, 255)
-        self.color_bottom = QColor(0, 0, 0, 255)
-        self.update_strip(0, 0)
-        self.y = 0
-        self.s = 0
-
-    def update_color(self, color_top, color_bottom):
-        self.color_top = QColor(*color_top, 255)
-        self.color_bottom = QColor(*color_bottom, 255)
-        self.update_strip(0, self.y)
-
-    def only_update_pos(self, y, color_top, color_bottom):
-        self.color_top = QColor(*color_top, 255)
-        self.color_bottom = QColor(*color_bottom, 255)
-        rect = QRectF(0, 0, self.width() - 2,
-                      self.height() - 2)
-        scene = QGraphicsScene(rect)
-        self.setScene(scene)
-        gradient = QLinearGradient(0, 0, 0, self.height())
-        gradient.setSpread(QGradient.RepeatSpread)
-        gradient.setColorAt(0, QColor(self.color_top))
-        gradient.setColorAt(1, QColor(self.color_bottom))
-        scene.setBackgroundBrush(gradient)
-        item = QGraphicsRectItem(0, 0, 25, 6)
-        item.setBrush(Qt.black)
-        item.setPos(0, y)
-        scene.addItem(item)
-        scene.clearSelection()
-
-    def update_strip(self, select_x, select_y):
-        if 0 <= select_x <= self.width() and -1 <= select_y <= self.height() - 8:
-            self.parent.is_updating = True
-            self.only_update_pos(select_y, (self.color_top.red(), self.color_top.green(), self.color_top.blue()),
-                                 (self.color_bottom.red(), self.color_bottom.green(), self.color_bottom.blue()))
-
-            self.y = select_y
-            self.s = 1 - (max(select_y, 0) / (self.height() - 8))
-            self.parent.custom_color()
-            self.parent.is_updating = False
-
-    def mousePressEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
-        self.is_press = True
-        self.update_strip(event.position().x(), event.position().y())
-
-    def mouseReleaseEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
-        self.is_press = False
-
-    def mouseMoveEvent(self, event: PySide6.QtGui.QMouseEvent) -> None:
-        if self.is_press:
-            self.update_strip(event.position().x(), event.position().y())
-
-
-class MOTDGeneratorWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("MOTD Editor - 1.1.0")
-        self.setGeometry(100, 100, 800, 600)
-        self.setMouseTracking(True)
-        self.generator = MOTDGeneratorWidget()
-        self.setCentralWidget(self.generator)
-
-        self.file = None
-
-        self.menu_bar = QMenuBar()
-
-        self.file_menu = self.menu_bar.addMenu("文件")
-
-        self.load_action = QAction("打开(.motd)", self)
-        self.load_action.triggered.connect(self.load_from_file)
-        self.file_menu.addAction(self.load_action)
-
-        self.file_menu.addSeparator()
-        self.save_action = QAction("保存(.motd)", self)
-        self.save_action.triggered.connect(self.save_with_file)
-        self.save_action.setEnabled(False)
-        self.file_menu.addAction(self.save_action)
-        self.save_as_action = QAction("另存为(.motd)", self)
-        self.save_as_action.triggered.connect(self.save_as_file)
-        self.save_as_action.setEnabled(False)
-        self.file_menu.addAction(self.save_as_action)
-
-        self.setMenuBar(self.menu_bar)
-
-    def load_from_file(self):
-        file = QFileDialog.getOpenFileName(self, "加载文件", ".", "MOTD服务器简介文件 (*.motd)")
-        self.file = file[0]
-        self.generator.load_from_file(file)
-        self.save_action.setEnabled(True)
-        self.save_as_action.setEnabled(True)
-
-    def save_with_file(self):
-        with open(self.file, "w", encoding="utf-8") as file:
-            file.write(self.generator.to_file_data())
-        QMessageBox(self.generator).information(self.generator, "保存成功!", "保存成功!")
-
-    def save_as_file(self):
-        self.generator.save_as_file()
-
-    def closeEvent(self, event: PySide6.QtGui.QCloseEvent) -> None:
-        self.generator.view_widget.randomer.is_run = False
 
 
 class MOTDGeneratorWidget(QWidget):
@@ -496,8 +436,10 @@ class MOTDGeneratorWidget(QWidget):
         self.custom_color_group.setLayout(self.custom_color_layout)
         self.color_group_layout.addWidget(self.custom_color_group)
 
-        self.color_strip = ColorStrip(self, (25, 150))
-        self.color_palette = ColorPalette(self, (150, 150), self.color_strip)
+        self.color_palette = HSLColorPalette(self, (150, 150))
+        self.color_strip = HSLColorPaletteStrip(self, self.color_palette, (25, 150))
+        # self.color_strip = ColorStrip(self, (25, 150))
+        # self.color_palette = ColorPalette(self, (150, 150), self.color_strip)
         self.custom_color_layout.addWidget(self.color_palette)
         self.custom_color_layout.addWidget(self.color_strip)
 
@@ -727,54 +669,53 @@ class MOTDGeneratorWidget(QWidget):
     def update_palette_by_hex(self):
         color_hex = self.color_hex_input.text()
         if re.match("^#[A-Fa-f0-9]{6}$", color_hex) and not self.is_updating:
-            self.is_updating = True
-            h, s, v = rgb2hsv(hex2rgb(color_hex))
-            self.update_palette(h, s, v)
-            self.is_updating = False
+            self.update_palette(*rgb_to_hsl(*hex2rgb(color_hex)))
 
-    def update_palette(self, h, s, v):
-        color_hex = rgb2hex(hsv2rgb(h, s, v))
-        x = int((h / 360) * self.color_palette.width())
-        y = int((1 - v) * self.color_palette.height())
-        self.color_palette.only_update_pos(x, y)
-        y = int((1 - s) * (self.color_strip.height() - 8))
-        self.color_strip.only_update_pos(y, hsv2rgb(h, 1, v), hsv2rgb(h, 0, v))
-        self.color_view.update_color(hex2rgb(color_hex))
-        self.color_palette.h = h
-        self.color_strip.s = s
-        self.color_palette.v = v
-        rgb = hsv2rgb(h, s, v)
-        self.color_r = rgb[0]
-        self.color_g = rgb[1]
-        self.color_b = rgb[2]
-        self.color_r_input.setText(str(rgb[0]))
-        self.color_g_input.setText(str(rgb[1]))
-        self.color_b_input.setText(str(rgb[2]))
-        self.custom_color_hex = color_hex
+    def update_palette(self, h, s, l):
+        if not self.is_updating:
+            self.is_updating = True
+            color_hex = rgb2hex(hsl_to_rgb(h, s, l))
+            y = int(self.color_strip.height() * (h / 360))
+            self.color_strip.update_view(y)
+            self.color_palette.update_color(h)
+            x = int(self.color_palette.width() * (s / 100))
+            y = int((1 - (1 - 0.5 * (s / 100))) * self.color_palette.height())
+            self.color_palette.update_view(x, y)
+
+            self.color_view.update_color(hex2rgb(color_hex))
+            self.color_strip.h = h
+            self.color_palette.s = s
+            self.color_palette.l = l
+            rgb = hsl_to_rgb(h, s, l)
+            self.color_r = rgb[0]
+            self.color_g = rgb[1]
+            self.color_b = rgb[2]
+            self.color_r_input.setText(str(rgb[0]))
+            self.color_g_input.setText(str(rgb[1]))
+            self.color_b_input.setText(str(rgb[2]))
+            self.color_hex_input.setText(color_hex)
+            self.custom_color_hex = color_hex
+            self.is_updating = False
 
     def update_palette_by_rgb(self):
         try:
-            self.is_updating = True
             r = self.color_r_input.text()
             g = self.color_g_input.text()
             b = self.color_b_input.text()
-            if 0 <= int(r) <= 255 and 0 <= int(g) <= 255 and 0 <= int(b) <= 255 and not self.is_updating:
-                self.update_palette(*rgb2hsv((int(r), int(g), int(b))))
-                self.color_hex_input.setText(rgb2hex((int(r), int(g), int(b))))
-            self.is_updating = False
+            if 0 <= int(r) <= 255 and 0 <= int(g) <= 255 and 0 <= int(b) <= 255:
+                self.update_palette(*rgb_to_hsl(int(r), int(g), int(b)))
         except AttributeError:
             pass
         except ValueError:
             pass
-        finally:
-            self.is_updating = False
 
-    def custom_color(self, h=None, s=None, v=None):
+    def custom_color(self, h=None, s=None, l=None):
         try:
-            h = h or self.color_palette.h
-            s = s or self.color_strip.s
-            v = v or self.color_palette.v
-            rgb = hsv2rgb(h, s, v)
+            self.is_updating = True
+            h = h or self.color_strip.h
+            s = s or self.color_palette.s
+            l = l or self.color_palette.l
+            rgb = hsl_to_rgb(h, s, l)
             self.color_r = rgb[0]
             self.color_g = rgb[1]
             self.color_b = rgb[2]
@@ -787,6 +728,8 @@ class MOTDGeneratorWidget(QWidget):
             self.custom_color_hex = color_hex
         except AttributeError:
             pass
+        finally:
+            self.is_updating = False
 
     def update_gradient_color(self, w):
         if w == "start" and re.match("^#[A-Fa-f0-9]{6}$", self.gradient_color_start_hex_input.text()):
@@ -852,6 +795,7 @@ class MOTDGeneratorWidget(QWidget):
             self.select_list.setCurrentRow(self.select_index)
 
     def add_component(self):
+        self.stop_text_randomer()
         style = MOTD.ChatStyle.of(self.style_obfuscated.isChecked(),
                                   self.style_bold.isChecked(),
                                   self.style_strikethrough.isChecked(),
@@ -869,8 +813,10 @@ class MOTDGeneratorWidget(QWidget):
         self.update_result()
         self.list_listener.is_start = True
         self.text_input.setText("")
+        self.start_text_randomer()
 
     def add_gradient_color_component(self):
+        self.stop_text_randomer()
         style = MOTD.ChatStyle.of(self.style_obfuscated.isChecked(),
                                   self.style_bold.isChecked(),
                                   self.style_strikethrough.isChecked(),
@@ -888,8 +834,10 @@ class MOTDGeneratorWidget(QWidget):
         self.update_result()
         self.list_listener.is_start = True
         self.text_input.setText("")
+        self.start_text_randomer()
 
     def remove_component(self):
+        self.stop_text_randomer()
         self.motd.pop(self.select_index)
         if self.select_index == self.select_list.count() - 2:
             self.on_select_clear()
@@ -900,16 +848,20 @@ class MOTDGeneratorWidget(QWidget):
         self.view_widget.update_view(self.motd)
         self.update_result()
         self.list_listener.is_start = True
+        self.start_text_randomer()
 
     def change_text(self):
+        self.stop_text_randomer()
         self.motd.set_component_text(self.select_index, self.text_input.text())
         self.list_listener.is_start = False
         self.update_select_list()
         self.view_widget.update_view(self.motd)
         self.update_result()
         self.list_listener.is_start = True
+        self.start_text_randomer()
 
     def change_color_style(self):
+        self.stop_text_randomer()
         if self.motd[self.select_index]["show"]["component_type"] == MOTD.ComponentType.normal:
             self.motd.set_component_color(self.select_index, self.color)
         else:
@@ -926,6 +878,15 @@ class MOTDGeneratorWidget(QWidget):
         self.view_widget.update_view(self.motd)
         self.update_result()
         self.list_listener.is_start = True
+        self.start_text_randomer()
+
+    def stop_text_randomer(self):
+        self.view_widget.randomer.is_run = False
+
+    def start_text_randomer(self):
+        self.view_widget.randomer = TextRandomer(0.02)
+        self.view_widget.randomer.start()
+        self.view_widget.update_view(self.motd)
 
     def copy_result(self):
         pyperclip.copy(self.result_output_line.text())
@@ -939,6 +900,7 @@ class MOTDGeneratorWidget(QWidget):
         return json.dumps(self.motd, indent=True)
 
     def load(self, file_data):
+        self.stop_text_randomer()
         old_motd = self.motd
         try:
             self.motd = MOTD.MOTDGenerator()
@@ -959,6 +921,8 @@ class MOTDGeneratorWidget(QWidget):
             self.list_listener.is_start = True
         else:
             QMessageBox(self).information(self, "加载成功!", f"MOTD文件已加载")
+        finally:
+            self.start_text_randomer()
 
     def save_as_file(self):
         if not self.result_output_line.text() == "":
@@ -973,6 +937,57 @@ class MOTDGeneratorWidget(QWidget):
         if file[0]:
             with open(file[0], "r") as load_file:
                 self.load(json.loads(load_file.read()))
+
+
+class MOTDGeneratorWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("MOTD Editor - 1.1.1")
+        self.setWindowIcon(QIcon("./icon.ico"))
+        self.setGeometry(100, 100, 800, 600)
+        self.setMouseTracking(True)
+        self.generator = MOTDGeneratorWidget()
+        self.setCentralWidget(self.generator)
+
+        self.file = None
+
+        self.menu_bar = QMenuBar()
+
+        self.file_menu = self.menu_bar.addMenu("文件")
+
+        self.load_action = QAction("打开(.motd)", self)
+        self.load_action.triggered.connect(self.load_from_file)
+        self.file_menu.addAction(self.load_action)
+
+        self.file_menu.addSeparator()
+        self.save_action = QAction("保存(.motd)", self)
+        self.save_action.triggered.connect(self.save_with_file)
+        self.save_action.setEnabled(False)
+        self.file_menu.addAction(self.save_action)
+        self.save_as_action = QAction("另存为(.motd)", self)
+        self.save_as_action.triggered.connect(self.save_as_file)
+        self.save_as_action.setEnabled(False)
+        self.file_menu.addAction(self.save_as_action)
+
+        self.setMenuBar(self.menu_bar)
+
+    def load_from_file(self):
+        file = QFileDialog.getOpenFileName(self, "加载文件", ".", "MOTD服务器简介文件 (*.motd)")
+        self.file = file[0]
+        self.generator.load_from_file(file)
+        self.save_action.setEnabled(True)
+        self.save_as_action.setEnabled(True)
+
+    def save_with_file(self):
+        with open(self.file, "w", encoding="utf-8") as file:
+            file.write(self.generator.to_file_data())
+        QMessageBox(self.generator).information(self.generator, "保存成功!", "保存成功!")
+
+    def save_as_file(self):
+        self.generator.save_as_file()
+
+    def closeEvent(self, event: PySide6.QtGui.QCloseEvent) -> None:
+        self.generator.view_widget.randomer.is_run = False
 
 
 if __name__ == "__main__":
