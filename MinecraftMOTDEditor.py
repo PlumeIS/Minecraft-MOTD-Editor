@@ -279,8 +279,8 @@ class HSLColorPalette(QGraphicsView):
         self.y = 0
         self.update_view(self.width(), 0)
 
-        self.s = 0
-        self.l = 100
+        self.s = 100
+        self.l = 50
 
     def update_color(self, h):
         self.color = hsl_to_rgb(h, 100, 50)
