@@ -8,6 +8,6 @@
 
 ## UI预览  
 
-![网站炸掉了用GithubPage罢(悲](https://pluwu.ml/img/introduce_ui.png)
+![网站炸掉了用GithubPage罢(悲](https://PlumeIS.github.io/img/introduce_ui.png)
 
 
